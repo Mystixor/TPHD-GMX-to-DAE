@@ -6,4 +6,5 @@ The Collada code is taken unedited from Pycollada's repository:
 https://github.com/pycollada/pycollada
 
 Instructions:
+"python -m pip install numpy" (Only on the first time, if you did not have Numpy installed yet)
 "python buildDAE.py your-gmx-file.gmx"

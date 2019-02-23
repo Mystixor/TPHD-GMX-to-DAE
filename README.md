@@ -5,6 +5,8 @@ It works with some but not all models and does not work perfectly with any model
 The Collada code is taken unedited from Pycollada's repository:
 https://github.com/pycollada/pycollada
 
+Dateutil was installed over pip and then I copied the files over directly into the project folder.
+
 
 Instructions:
 

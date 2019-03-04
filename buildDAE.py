@@ -1,11 +1,12 @@
 import sys, struct, numpy
 from collada import *
 
-def createDAE(mesh, mat, DAE):
+def createDAE(mesh, mat, DAE, counters):
 	for i in range(len(DAE)):
+		materialName = "material" + str(counters[i])
 		mesh.geometries.append(DAE[i])
 
-		matnode = scene.MaterialNode("materialref", mat, inputs=[])
+		matnode = scene.MaterialNode(materialName, mat[i], inputs=[])
 		geomnode = scene.GeometryNode(DAE[i], [matnode])
 		node = scene.Node("node" + str(i), children=[geomnode])
 
@@ -18,19 +19,26 @@ def createDAE(mesh, mat, DAE):
 def createGEOM(mesh, model, counter):
 	#vert_floats = [-50,50,50,50,50,50,-50,-50,50,50,-50,50,-50,50,-50,50,50,-50,-50,-50,-50,50,-50,-50]
 	#normal_floats = [0,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0,0,1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0,0,-1,0,0,-1,0,0,-1,0,0,-1]
-	vert_src = source.FloatSource("cubeverts-array", numpy.array(model[3]), ('X', 'Y', 'Z'))
-	normal_src = source.FloatSource("cubenormals-array", numpy.array(model[4]), ('X', 'Y', 'Z'))
+	vert_src = source.FloatSource("verts-array", numpy.array(model[3]), ('X', 'Y', 'Z'))
+	normal_src = source.FloatSource("normals-array", numpy.array(model[4]), ('X', 'Y', 'Z'))
+	uv_src = source.FloatSource("uv-array", numpy.array(model[5]), ('S', 'T'))
 
-	geom = geometry.Geometry(mesh, "geometry" + str(counter), "mycube", [vert_src, normal_src])
+	geom = geometry.Geometry(mesh, "geometry" + str(counter), "mycube", [vert_src, normal_src, uv_src])
 
 	input_list = source.InputList()
-	input_list.addInput(0, 'VERTEX', "#cubeverts-array")
-	input_list.addInput(1, 'NORMAL', "#cubenormals-array")
+	input_list.addInput(0, 'VERTEX', "#verts-array")
+	#input_list.addInput(1, 'NORMAL', "#normals-array")
+	input_list.addInput(1, 'TEXCOORD', "#uv-array", set="0")
 
 	#indices = numpy.array([0,0,2,1,3,2,0,0,3,2,1,3,0,4,1,5,5,6,0,4,5,6,4,7,6,8,7,9,3,10,6,8,3,10,2,11,0,12,4,13,6,14,0,12,6,14,2,15,3,16,7,17,5,18,3,16,5,18,1,19,5,20,7,21,6,22,5,20,6,22,4,23])
-	numpy_indices = numpy.array(model[5])
-
-	triset = geom.createTriangleSet(numpy_indices, input_list, "materialref")
+	numpy_indices = numpy.array(model[6])
+	
+	'''vcounts = []
+	for o in range(int(model[2] / 3)):
+		vcounts.append(3)
+	numpy_vcounts = numpy.array(vcounts)'''
+	
+	triset = geom.createTriangleSet(numpy_indices, input_list, "material" + str(counter))
 	geom.primitives.append(triset)
 	
 	return geom
@@ -55,20 +63,22 @@ def VERT(size, vertSize, vertCount):
 	start = int(f.tell())
 	vert_floats = []
 	normal_floats = []
+	uv_floats = []
 	i = 0
 	for i in range(vertCount):
 		if(vertSize == 36):
 			unk8 = struct.unpack(">i",f.read(4))[0]
 		verts = struct.unpack(">3f",f.read(12))
 		normals = struct.unpack(">3f",f.read(12))
-		unk6 =		struct.unpack(">f",f.read(4))[0]
-		unk7 =		struct.unpack(">f",f.read(4))[0]
+		uvs = struct.unpack(">2f",f.read(8))
 		
 		for j in range(3):
 			vert_floats.append(verts[j])
 			normal_floats.append(normals[j])
+		for h in range(2):
+			uv_floats.append(uvs[h])
 	f.seek(start - 8 + size)
-	return [vert_floats, normal_floats]
+	return [vert_floats, normal_floats, uv_floats]
 
 def INDX(size, indexCount):
 	start = int(f.tell())
@@ -78,6 +88,7 @@ def INDX(size, indexCount):
 		index = struct.unpack(">3H", f.read(6))
 		
 		for j in range(3):
+			indices.append(index[j])
 			indices.append(index[j])
 	f.seek(start - 8 + size)
 	return(indices)
@@ -106,6 +117,7 @@ def readGMX():
 				verts = VERT(size, mesh[meshID - 1][0], mesh[meshID - 1][1])
 				mesh[meshID - 1].append(verts[0])
 				mesh[meshID - 1].append(verts[1])
+				mesh[meshID - 1].append(verts[2])
 			elif(section == "INDX"):
 				mesh[meshID - 1].append(INDX(size, mesh[meshID - 1][2]))
 			elif(section == "VMAP"):
@@ -116,18 +128,40 @@ def readGMX():
 
 def main():
 	mesh = Collada()
+	
+	axis = asset.UP_AXIS.Z_UP
+	mesh.assetInfo.upaxis = axis
+	'''
 	effect = material.Effect("effect0", [], "phong", diffuse=(1,0,0), specular=(0,1,0))
 	mat = material.Material("material0", "mymaterial", effect)
 	mesh.effects.append(effect)
 	mesh.materials.append(mat)
-
+	'''
 	model = readGMX()
 	DAE = []
+	mat = []
+	counters = []
 	for i in range(len(model)):
 		counter = i
 		if(model[i][1] != 0 and model[i][2] != 0):
+			materialName = "material" + str(counter)
+			image = material.CImage(materialName + "-image", sys.argv[1].rsplit("\\", 2)[-1].replace(".gmx", "") + '.png')
+			surface = material.Surface(materialName + "-image-surface", image)
+			sampler2d = material.Sampler2D(materialName + "-image-sampler", surface)
+			map1 = material.Map(sampler2d, "UVSET0")
+			
+			effect = material.Effect(materialName + "-effect", [surface, sampler2d], "lambert",\
+							emission=(0.0, 0.0, 0.0, 1), ambient=(0.0, 0.0, 0.0, 1),  diffuse=map1,\
+							transparent=map1, transparency=0.0, double_sided=True)
+			
+			mat.append(material.Material(materialName + "ID", materialName, effect))
+			
+			mesh.effects.append(effect)
+			mesh.materials.append(mat[i])
 			DAE.append(createGEOM(mesh, model[i], counter))
-	createDAE(mesh, mat, DAE)
+			
+			counters.append(counter)
+	createDAE(mesh, mat, DAE, counters)
 
 if __name__ == "__main__":
 	print("")

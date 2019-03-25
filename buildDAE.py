@@ -68,13 +68,18 @@ def VERT(size, vertSize, vertCount):
 	for i in range(vertCount):
 		if(vertSize == 36):
 			unk8 = struct.unpack(">i",f.read(4))[0]
+		
 		verts = struct.unpack(">3f",f.read(12))
-		normals = struct.unpack(">3f",f.read(12))
+		
+		if(vertSize > 20):
+			normals = struct.unpack(">3f",f.read(12))
+		
 		uvs = struct.unpack(">2f",f.read(8))
 		
 		for j in range(3):
 			vert_floats.append(verts[j])
-			normal_floats.append(normals[j])
+			if(vertSize > 20):
+				normal_floats.append(normals[j])
 		for h in range(2):
 			uv_floats.append(uvs[h])
 	f.seek(start - 8 + size)

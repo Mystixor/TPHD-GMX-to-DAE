@@ -88,8 +88,8 @@ def INDX(size, indexCount):
 		index = struct.unpack(">3H", f.read(6))
 		
 		for j in range(3):
-			indices.append(index[j])
-			indices.append(index[j])
+			indices.append(index[2 - j])
+			indices.append(index[2 - j])
 	f.seek(start - 8 + size)
 	return(indices)
 

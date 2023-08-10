@@ -151,18 +151,21 @@ def main():
 		counter = i
 		if(model[i][1] != 0 and model[i][2] != 0):
 			materialName = "material" + str(counter)
-			image = material.CImage(materialName + "-image", sys.argv[1].rsplit("\\", 2)[-1].replace(".gmx", "") + '.png')
+			image = material.CImage(materialName + "-image", sys.argv[1].rsplit("\\", 2)[-1].replace(".gmx", "") + str(counter) + '.png')
 			surface = material.Surface(materialName + "-image-surface", image)
 			sampler2d = material.Sampler2D(materialName + "-image-sampler", surface)
 			map1 = material.Map(sampler2d, "UVSET0")
 			
 			effect = material.Effect(materialName + "-effect", [surface, sampler2d], "lambert",\
+							diffuse=map1, transparent=map1)
+			''',\
 							emission=(0.0, 0.0, 0.0, 1), ambient=(0.0, 0.0, 0.0, 1),  diffuse=map1,\
-							transparent=map1, transparency=0.0, double_sided=True)
+							transparent=map1, transparency=0.0, double_sided=True)'''
 			
 			mat.append(material.Material(materialName + "ID", materialName, effect))
 			
 			mesh.effects.append(effect)
+			mesh.images.append(image)
 			mesh.materials.append(mat[i])
 			DAE.append(createGEOM(mesh, model[i], counter))
 			
